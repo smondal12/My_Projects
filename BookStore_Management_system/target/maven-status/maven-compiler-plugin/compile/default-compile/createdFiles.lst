@@ -1,0 +1,4 @@
+com\group7\bookstore\repository\BookRepository.class
+com\group7\bookstore\entity\Author.class
+com\group7\bookstore\BookstoreApplication.class
+com\group7\bookstore\entity\Book.class

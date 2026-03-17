@@ -1,0 +1,80 @@
+================================================================================
+          HOW TO RUN THE BOOKSTORE MANAGEMENT SYSTEM (SPRING BOOT)
+================================================================================
+
+This guide outlines the steps required to configure and run the project successfully.
+
+--------------------------------------------------------------------------------
+1. PREREQUISITES
+--------------------------------------------------------------------------------
+Ensure you have the following installed on your system:
+- Java JDK 17 or higher
+- Maven 3.x
+- MySQL Server (running locally)
+
+--------------------------------------------------------------------------------
+2. DATABASE SETUP
+--------------------------------------------------------------------------------
+The application requires a MySQL database. You must create it manually before running the app.
+
+1. Open your MySQL Command Line Client or Workbench.
+2. Run the following SQL command to create the database:
+
+   CREATE DATABASE bookstore_db;
+
+3. Verify it exists:
+
+   SHOW DATABASES;
+
+--------------------------------------------------------------------------------
+3. PROJECT CONFIGURATION
+--------------------------------------------------------------------------------
+You need to connect the application to your local MySQL database.
+
+1. Open the configuration file:
+   src/main/resources/application.properties
+
+2. Locate the database connection settings:
+   spring.datasource.url=jdbc:mysql://localhost:3306/bookstore_db
+   spring.datasource.username=root
+   spring.datasource.password=root
+
+3. UPDATE THE CREDENTIALS:
+   - Change 'root' in 'spring.datasource.username' to your MySQL username.
+   - Change 'root' in 'spring.datasource.password' to your MySQL password.
+   
+   Example (if your password is '1234'):
+   spring.datasource.password=1234
+
+4. Save the file.
+
+--------------------------------------------------------------------------------
+4. HOW TO RUN
+--------------------------------------------------------------------------------
+
+OPTION A: Using VS Code (Recommended)
+1. Open the project folder in VS Code.
+2. Wait for the Java extensions to finish loading/importing the project.
+3. Navigate to: src/main/java/com/group7/bookstore/BookstoreApplication.java
+4. You should see "Run | Debug" buttons just above the 'public static void main' line.
+5. Click "Run".
+
+OPTION B: Using Command Line (Terminal)
+1. Open a terminal/command prompt inside the project folder.
+2. Run the following command:
+
+   mvn spring-boot:run
+
+--------------------------------------------------------------------------------
+5. TROUBLESHOOTING
+--------------------------------------------------------------------------------
+- "Connection refused" or "Access denied":
+  -> Double-check your MySQL username and password in application.properties.
+  -> Ensure the MySQL service is actually running.
+
+- "Unknown database 'bookstore_db'":
+  -> Run the 'CREATE DATABASE bookstore_db;' SQL command again.
+
+- "Port 8080 already in use":
+  -> Since this is primarily a console app, this shouldn't block you, but you can 
+     change the port in application.properties by adding: server.port=8081

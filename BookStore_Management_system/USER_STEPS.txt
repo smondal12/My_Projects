@@ -1,0 +1,37 @@
+STEPS YOU NEED TO FOLLOW
+
+Here is the checklist of things you need to do to get the application running:
+
+1. DATABASE SETUP
+   [ ] Open your MySQL Workbench or Command Line.
+   [ ] Execute the following command:
+       CREATE DATABASE bookstore_db;
+   (Note: You do not need to create tables. The application will create them for you automatically.)
+
+2. CHECK CONFIGURATION
+   [ ] Go to the folder: src/main/resources
+   [ ] Open the file: application.properties
+   [ ] Check lines 3 and 4:
+       spring.datasource.username=root
+       spring.datasource.password=root
+   [ ] If your MySQL password is different (e.g., empty, or "password", or "1234"), change it here and save the file.
+
+3. RUN THE APPLICATION
+   Option A: Using Command Line (easiest)
+   [ ] Open a terminal in this project folder.
+   [ ] Run the command:
+       mvn spring-boot:run
+
+   Option B: Using IntelliJ IDEA or VS Code
+   [ ] Open this folder as a project.
+   [ ] Locate the file: src/main/java/com/group7/bookstore/BookstoreApplication.java
+   [ ] Right-click on the file and select "Run".
+
+4. VERIFY IT WORKS
+   [ ] You should see the "Bookstore Management System" banner in the console.
+   [ ] Try adding a book (Option 1 -> 2).
+   [ ] Try listing books (Option 1 -> 1).
+
+TROUBLESHOOTING
+- If you see "Access denied for user", your database password in application.properties is wrong.
+- If you see "Communications link failure", your MySQL server is not running.
