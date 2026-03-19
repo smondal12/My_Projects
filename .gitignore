@@ -1,0 +1,17 @@
+# Datasets and images
+data/
+yolo_dataset/
+*.jpg
+*.jpeg
+*.png
+*.mp4
+
+# YOLO weights and logs
+runs/
+*.pt
+
+# Python caches
+__pycache__/
+*.pyc
+.env
+venv/

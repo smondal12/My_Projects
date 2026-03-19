@@ -1,0 +1,163 @@
+"""
+Convert COCO-format split JSONs (train/val/test) into YOLOv8 format.
+
+Input structure  : data/{train,val,test}.json  +  data/batch_*/*.jpg
+Output structure :
+    yolo_dataset/
+        images/train/  val/  test/     ← symlinked or copied images
+        labels/train/  val/  test/     ← one .txt per image
+
+YOLO label format (one row per annotation):
+    class_id  cx  cy  w  h     (all normalised 0–1)
+
+Usage:
+    python convert_to_yolo.py
+    python convert_to_yolo.py --data_dir "c:/path/to/TACO-master/data"
+                               --output_dir yolo_dataset
+"""
+
+import json
+import os
+import shutil
+import argparse
+from tqdm import tqdm
+
+# ─── Default paths ─────────────────────────────────────────────────────────────
+TACO_DATA_DIR = os.path.join(
+    os.path.expanduser("~"),
+    "Downloads", "TACO-master", "TACO-master", "data"
+)
+
+parser = argparse.ArgumentParser(description="Convert COCO splits → YOLO format")
+parser.add_argument("--data_dir",   default=TACO_DATA_DIR,
+                    help="Directory containing TACO images and split JSONs")
+parser.add_argument("--output_dir", default="yolo_dataset",
+                    help="Output directory for YOLO dataset")
+args = parser.parse_args()
+
+SPLITS = ["train", "val", "test"]
+
+# ─── Helpers ───────────────────────────────────────────────────────────────────
+def coco_bbox_to_yolo(bbox, img_w, img_h):
+    """Convert [x, y, w, h] (top-left absolute) → [cx, cy, w, h] (normalised)."""
+    x, y, w, h = bbox
+    cx = (x + w / 2) / img_w
+    cy = (y + h / 2) / img_h
+    norm_w = w / img_w
+    norm_h = h / img_h
+    # Clamp to [0, 1]
+    cx     = max(0.0, min(1.0, cx))
+    cy     = max(0.0, min(1.0, cy))
+    norm_w = max(0.0, min(1.0, norm_w))
+    norm_h = max(0.0, min(1.0, norm_h))
+    return cx, cy, norm_w, norm_h
+
+# ─── Process each split ────────────────────────────────────────────────────────
+total_images = 0
+total_labels = 0
+total_skipped = 0
+
+for split in SPLITS:
+    ann_path = os.path.join(args.data_dir, f"{split}.json")
+    if not os.path.exists(ann_path):
+        print(f"[WARN] {ann_path} not found — skipping {split} split.")
+        continue
+
+    with open(ann_path, "r") as f:
+        data = json.load(f)
+
+    images      = data["images"]
+    annotations = data["annotations"]
+
+    # Build image_id → image info map
+    id_to_image = {img["id"]: img for img in images}
+
+    # Build image_id → list of annotations
+    id_to_anns = {}
+    for ann in annotations:
+        id_to_anns.setdefault(ann["image_id"], []).append(ann)
+
+    # Prepare output directories
+    img_out_dir = os.path.join(args.output_dir, "images", split)
+    lbl_out_dir = os.path.join(args.output_dir, "labels", split)
+    os.makedirs(img_out_dir, exist_ok=True)
+    os.makedirs(lbl_out_dir, exist_ok=True)
+
+    split_labels = 0
+    split_skipped = 0
+
+    for img_info in tqdm(images, desc=f"Converting [{split}]", unit="img"):
+        img_id   = img_info["id"]
+        img_w    = img_info["width"]
+        img_h    = img_info["height"]
+        rel_path = img_info["file_name"]          # e.g. "batch_1/000006.jpg"
+        src_path = os.path.join(args.data_dir, rel_path)
+
+        if not os.path.isfile(src_path):
+            split_skipped += 1
+            continue  # Image not downloaded yet — skip
+
+        # Flat filename for YOLO (avoid nested dirs in labels/)
+        flat_name = rel_path.replace("/", "_").replace("\\", "_")  # batch_1_000006.jpg
+        ext       = os.path.splitext(flat_name)[1]
+        base_name = os.path.splitext(flat_name)[0]
+
+        dst_img  = os.path.join(img_out_dir, flat_name)
+        dst_lbl  = os.path.join(lbl_out_dir, base_name + ".txt")
+
+        # Copy image (skip if already done)
+        if not os.path.isfile(dst_img):
+            shutil.copy2(src_path, dst_img)
+
+        # Write label file
+        anns = id_to_anns.get(img_id, [])
+        if not anns:
+            # Write empty label file (YOLO needs it to exist)
+            open(dst_lbl, "w").close()
+            continue
+
+        with open(dst_lbl, "w") as lf:
+            for ann in anns:
+                cat_id = ann["category_id"]  # 0 or 1
+                bbox   = ann["bbox"]         # [x, y, w, h]
+                if not bbox or bbox[2] <= 0 or bbox[3] <= 0:
+                    continue
+                cx, cy, nw, nh = coco_bbox_to_yolo(bbox, img_w, img_h)
+                lf.write(f"{cat_id} {cx:.6f} {cy:.6f} {nw:.6f} {nh:.6f}\n")
+                split_labels += 1
+
+        total_images += 1
+
+    total_labels  += split_labels
+    total_skipped += split_skipped
+    print(f"  [{split}] images processed: {len(images) - split_skipped}"
+          f"  |  annotations: {split_labels}"
+          f"  |  skipped (not downloaded): {split_skipped}")
+
+# ─── Write dataset.yaml ────────────────────────────────────────────────────────
+yaml_path = os.path.join(args.output_dir, "dataset.yaml")
+abs_out   = os.path.abspath(args.output_dir)
+yaml_content = f"""# YOLOv8 dataset configuration
+# Auto-generated by convert_to_yolo.py
+
+path: {abs_out}
+
+train: images/train
+val:   images/val
+test:  images/test
+
+nc: 2
+names:
+  0: Recyclable
+  1: Non-Recyclable
+"""
+with open(yaml_path, "w") as f:
+    f.write(yaml_content)
+
+print("\n" + "=" * 55)
+print("[OK] YOLO conversion complete!")
+print(f"   Total images converted : {total_images}")
+print(f"   Total label lines      : {total_labels}")
+print(f"   Skipped (not downloaded): {total_skipped}")
+print(f"\n   dataset.yaml written to: {yaml_path}")
+print("=" * 55)

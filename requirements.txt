@@ -1,0 +1,20 @@
+# Core dependencies
+pillow
+requests
+numpy
+pandas
+matplotlib
+seaborn
+tqdm
+
+# COCO API (Windows compatible)
+pycocotools-windows
+
+# YOLOv8
+ultralytics>=8.0.0
+
+# OpenCV for webcam/image inference
+opencv-python
+
+# Dataset utilities
+scikit-learn
